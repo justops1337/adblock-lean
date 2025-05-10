@@ -681,7 +681,8 @@ gen_and_process_blocklist()
 	print_list_parts()
 	{
 		local find_name="${1}-*" find_cmd="cat"
-		[ "${use_compression}" = 1 ] && { find_name="${1}-*.gz" find_cmd="busybox zcat"; }
+		try_pigz
+		[ "${use_compression}" = 1 ] && { find_name="${1}-*.gz" find_cmd="${zcat_command}"; }
 		find "${ABL_DIR}" -name "${find_name}" -exec ${find_cmd} {} \; -exec rm -f {} \;
 		printf ''
 	}
@@ -1035,8 +1036,9 @@ import_blocklist_file()
 	compressed=
 	if [ -n "${final_compress}" ]
 	then
+		try_pigz
 		printf '%s\n' "conf-script=\"busybox sh ${DNSMASQ_CONF_D}/.abl-extract_blocklist\"" > "${DNSMASQ_CONF_D}"/abl-conf-script &&
-		printf '%s\n%s\n' "busybox zcat ${DNSMASQ_CONF_D}/.abl-blocklist.gz" "exit 0" > "${DNSMASQ_CONF_D}"/.abl-extract_blocklist ||
+		printf '%s\n%s\n' "${zcat_command} ${DNSMASQ_CONF_D}/.abl-blocklist.gz" "exit 0" > "${DNSMASQ_CONF_D}"/.abl-extract_blocklist ||
 			{ reg_failure "Failed to create conf-script for dnsmasq."; return 1; }
 		compressed=" compressed"
 	fi

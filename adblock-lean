@@ -1534,12 +1534,12 @@ uninstall()
 	do
 		i=$((i+1))
 		uci -q get dhcp.@dnsmasq[${i}] >/dev/null || break
-		case "$(uci -q get dhcp.@dnsmasq[${i}].addnmount)" in */bin/busybox*) ;; *) continue; esac
+		case "$(uci -q get dhcp.@dnsmasq[${i}].addnmount)" in */bin/busybox* | */usr/bin/pigz*) ;; *) continue; esac
 		addnmount_deleted=
 		log_msg -purple "" "Deleting the custom addnmount entry from /etc/config/dhcp."
-		if uci -q del_list dhcp.@dnsmasq[${i}].addnmount='/bin/busybox' && uci commit
+		if uci -q del_list dhcp.@dnsmasq[${i}].addnmount='/bin/busybox' &&  uci -q del_list dhcp.@dnsmasq[${i}].addnmount='/usr/bin/pigz' && uci commit
 		then
-			case "$(uci -q get dhcp.@dnsmasq[${i}].addnmount)" in */bin/busybox*) continue; esac
+			case "$(uci -q get dhcp.@dnsmasq[${i}].addnmount)" in */bin/busybox* | */usr/bin/pigz*) continue; esac
 			addnmount_deleted=1
 			log_msg "Note: the adblock-lean developers are not aware of any other software that requires the specific addnmount entry created by adblock-lean." \
 				"Should the addnmount entry be required for any reason then you will need to manually re-add it."
