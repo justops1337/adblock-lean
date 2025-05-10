@@ -19,14 +19,30 @@ ABL_TEST_DOMAIN="adblocklean-test123.info"
 
 # UTILITY FUNCTIONS
 
+try_pigz()
+{
+    # Check if pigz is installed
+    if command -v pigz &> /dev/null; then
+        compress_command="pigz"
+        decompress_command="pigz -d"
+        zcat_command="pigz -dc"
+    else
+        compress_command="busybox gzip"
+        decompress_command="busybox gunzip"
+        zcat_command="busybox zcat"
+    fi
+}
+
 try_gzip()
 {
-	busybox gzip -f "${1}" || { rm -f "${1}.gz"; reg_failure "Failed to compress '${1}'."; return 1; }
+	try_pigz
+	${compress_command} -f "${1}" || { rm -f "${1}.gz"; reg_failure "Failed to compress '${1}'."; return 1; }
 }
 
 try_gunzip()
 {
-	busybox gunzip -f "${1}" || { rm -f "${1%.gz}"; reg_failure "Failed to extract '${1}'."; return 1; }
+	try_pigz
+	${decompress_command} -f "${1}" || { rm -f "${1%.gz}"; reg_failure "Failed to extract '${1}'."; return 1; }
 }
 
 # subtract list $1 from list $2, with optional field separator $4 (otherwise uses newline)
@@ -415,7 +431,8 @@ process_list_part()
 		# compress parts
 		if [ -n "${compress_part}" ]
 		then
-			busybox gzip
+			try_pigz
+			${compress_command}
 		else
 			cat
 		fi > "${dest_file}"
@@ -801,7 +818,8 @@ gen_and_process_blocklist()
 	{ head -c "${max_blocklist_file_size_B}"; read -rn1 -d '' && { touch "${ABL_DIR}/abl-too-big.tmp"; cat 1>/dev/null; }; } |
 	if  [ -n "${final_compress}" ]
 	then
-		busybox gzip
+		try_pigz
+		${compress_command}
 	else
 		cat
 	fi > "${out_f}" || { reg_failure "Failed to write to output file '${out_f}'."; rm -f "${out_f}"; return 1; }
@@ -820,7 +838,8 @@ gen_and_process_blocklist()
 	reg_action -blue "Checking the resulting blocklist with 'dnsmasq --test'." || return 1
 	if  [ -n "${final_compress}" ]
 	then
-		busybox zcat -f "${out_f}"
+		try_pigz
+		${zcat_command} -f "${out_f}"
 	else
 		cat "${out_f}"
 	fi |
@@ -1141,7 +1160,8 @@ get_active_entries_cnt()
 
 	if [ -f "${DNSMASQ_CONF_D}"/.abl-blocklist.gz ]
 	then
-		busybox zcat "${DNSMASQ_CONF_D}"/.abl-blocklist.gz
+		try_pigz
+		${zcat_command} "${DNSMASQ_CONF_D}"/.abl-blocklist.gz
 	elif [ -f "${DNSMASQ_CONF_D}"/abl-blocklist ]
 	then
 		cat "${DNSMASQ_CONF_D}/abl-blocklist"
